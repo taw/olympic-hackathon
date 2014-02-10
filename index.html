@@ -1,0 +1,138 @@
+<html>
+  <head>
+    <title>Talk Olympics</title>
+    <script type='text/javascript' src="http://static.firebase.com/v0/firebase.js"></script>
+    <script type='text/javascript' src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'></script>
+  	<link href="style.css" rel="stylesheet">
+  </head>
+  <body>
+    <div id="categories"><h3>Events</h3></div>
+
+    <div id="schedule"><h3>Event Schedule</h3></div>
+
+    <div id="central_column"></div>
+      <h3>Event Conversation</h3>
+      <img src="olympics460.jpg" height="45px" /><h4 id="sport_name"></h4>
+      <div id="tweets_form">
+        Name <input type='text' id='nameInput' />
+        Message <input type='message' id='messageInput' />
+      </div>
+      <div id="tweets"></div>
+    </div>
+
+    <script>
+      var sports = ["Archery","Athletics","Athletics - Marathon","Athletics - Race Walk","Badminton","Basketball","Beach Volleyball","Boxing","Canoe Slalom","Canoe Sprint","Cycling - BMX","Cycling - Mountain Bike","Cycling - Road","Cycling - Track","Diving","Equestrian - Dressage","Equestrian - Eventing","Equestrian - Jumping","Fencing","Football","Freestyle Wrestling","Greco-Roman Wrestling","Gymnastics - Artistic","Gymnastics - Rhythmic","Gymnastics - Trampoline","Handball","Hockey","Judo","Modern Pentathlon","Rowing","Sailing","Shooting","Swimming","Swimming - Marathon","Synchronised Swimming","Table Tennis","Taekwondo","Tennis","Triathlon","Volleyball","Water Polo","Weightlifting"];
+
+      var load_schedule = function(schedule_data){
+        var schedule_per_sport = {};
+        for(var i in schedule_data){
+          var ev = schedule_data[i];
+          if(!schedule_per_sport[ev.sport])
+            schedule_per_sport[ev.sport] = [];
+          schedule_per_sport[ev.sport].push(ev);
+        }
+        
+        for(var i in sports){
+          (function(i,sport_name){
+            var current_schedule = schedule_per_sport[sport_name];
+            var list = $("<ul></ul>");
+
+            for(var j in current_schedule){
+              var ev = current_schedule[j];
+              var gender = ev.gender;
+              if(gender == "W") gender = "women";
+              if(gender == "M") gender = "men";
+              if(gender == "W&M" || gender == "M/W") gender = "men and women";
+              var li = $("<li></li>").append(ev.time + " " + ev.date + " - " + ev.round + " (" + gender + ") - " + ev.venue);
+              list.append(li);
+              
+            }
+
+            var tw = $("<div class='schedule' id='schedule-"+i+"'></div>")
+            $(tw).append(list);
+
+            $("#schedule").append(tw);
+          })(i,sports[i]);
+        }
+      }
+
+      var current_sport_name = null;
+
+      var switch_sport = function(sport_id){
+        current_sport_name = sports[sport_id];
+        $(".tweets").hide();
+        $("#tweets-"+sport_id).show();
+        $(".schedule").hide();
+        $("#schedule-"+sport_id).show();
+        $("#sport_name").text(current_sport_name);
+        $(".sport_name_link").removeClass("sport_name_selected");
+        $("#sport_name_link-"+sport_id).addClass("sport_name_selected");
+      }
+
+      for(var i in sports){
+        (function(i,sport_name){
+          var link = $("<a class='sport_name_link' id='sport_name_link-"+i+"'><img src=\"img/" + sport_name + ".png\"> " + sport_name + "</a>");
+          link.click(function(){
+            switch_sport(i);
+          });
+          $("#categories").append(link);
+          $("#categories").append($("<br/>"));
+          
+          var tw = $("<div class='tweets' id='tweets-"+i+"'></div>")
+          $(tw).append("<div id='messages-"+i+"'></div>");
+
+          $("#tweets").append(tw);
+
+        })(i,sports[i]);
+      }
+
+      $('#messageInput').keypress(function (e) {
+        if (e.keyCode == 13) {
+          var name = $('#nameInput').val();
+          var text = $('#messageInput').val();
+          if(text.match(/\S/)) {
+            db.push({sport: current_sport_name, name: name, message: text});
+            $('#messageInput').val('');
+          }
+        }
+      });
+        
+      
+
+      //   $("#sports").append("<h3>" + sports[i] + "</h3><div id='messages-"+ sports[i] +"'></div>" );
+      //   $("#sports").append("<input type='text' id='nameInput-"+sports[i]+"' placeholder='Name'>");
+      //   $("#sports").append("<input type='text' id='messageInput-"+sports[i]+"' placeholder='Message'>");
+      // 
+      //   (function(sport_name){
+      //     $('#messageInput-'+sport_name).keypress(function (e) {
+      //       if (e.keyCode == 13) {
+      //         var name = $('#nameInput-'+sport_name).val();
+      //         var text = $('#messageInput-'+sport_name).val();
+      //         db.push({sport: sport_name, name: name, message: text});
+      //         $('#messageInput').val('');
+      //       }
+      //     });
+      //   })(sports[i]);
+      // 
+    
+      var db = new Firebase('http://gamma.firebase.com/vajra/olympics');
+      
+      function printChatMessage(sport_name, name, msg) {
+        var sport_num = sports.indexOf(sport_name);
+        if(sport_num == -1) return;
+        var mid = '#messages-'+sport_num;
+        $('<div/>').text(msg).prepend($('<em/>').text(name+': ')).prependTo($(mid));
+        $(mid)[0].scrollTop = $(mid)[0].scrollHeight;
+      };
+      
+      db.on('child_added', function(snapshot) {
+        var message = snapshot.val();
+        printChatMessage(message.sport, message.name, message.message);
+      });
+    </script>
+    <script type='text/javascript' src="schedule.js"></script>
+    <script>
+      switch_sport(0);
+    </script>
+  </body>
+</html>
